@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 __author__ = "Rajitha de Silva"
-__copyright__ = "Copyright (C) 2023 rajitha@ieee.org"
 __license__ = "CC"
-__version__ = "2.0"
+__version__ = "3.0"
 
 '''
 Version 3 Change Log
@@ -31,6 +30,7 @@ from sensor_msgs.msg import Image as IGG
 from sensor_msgs.msg import Imu, CameraInfo
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
+from romea_mobile_base_msgs.msg import TwoAxleSteeringCommand
 
 from ag_row.crd_utils.unetwsess import * #U-Net model inference functions
 from ag_row.crd_utils.data import * # Data Loader for U-Net
@@ -41,10 +41,9 @@ from ag_row.crd_utils.utils import * #Miscellaneous (math functions and etc)
 ROBOT = "FIRA" # [Husky, Mark1, Hunter, Leo, HuskySim]
 CAMERA = "FIRA"# [D435i, Leo]
 
-class lineFollower(object):
+class lineFollower(Node):
     def __init__(self, robot, camera):
-        rclpy.init()
-        self.node = Node('line_follower')
+        super().__init__('Line_Follower')
         vel_topic, odom_topic, length = init_robot(robot)
         img_topic, depth_topic, imu_topic, cam_info_topic = init_camera(camera)
 
@@ -58,54 +57,55 @@ class lineFollower(object):
         self.eor = None
         self.robot_length = length
 
-        self.node.create_subscription(IGG, img_topic, self.rgb_callback, 10)
-        self.node.create_subscription(IGG, depth_topic, self.depth_callback, 10)
-        self.node.create_subscription(Imu, imu_topic, self.imu_callback, 10)
-        self.node.create_subscription(CameraInfo, cam_info_topic, self.camera_info_callback, 10)
-        self.node.create_subscription(Odometry, odom_topic, self.odom_callback, 10)
+        self.create_subscription(IGG, img_topic, self.rgb_callback, 10)
+        #self.create_subscription(IGG, depth_topic, self.depth_callback, 10)
+        self.create_subscription(Imu, imu_topic, self.imu_callback, 10)
+        self.create_subscription(CameraInfo, cam_info_topic, self.camera_info_callback, 10)
+        self.create_subscription(Odometry, odom_topic, self.odom_callback, 10)
 
-        self.pub_vel = self.node.create_publisher(Twist, vel_topic, 10)
-        self.pub_vui = self.node.create_publisher(Twist, "/vui", 10)#Vision User Interface Topic. An image verbose for each thread in the pipeline
+        self.pub_vel = self.create_publisher(TwoAxleSteeringCommand, vel_topic, 10)
+        self.pub_vui = self.create_publisher(Twist, "/vui", 10)#Vision User Interface Topic. An image verbose for each thread in the pipeline
         print("Line follower initialized")
+
+        self.model = self.load_unet_model()
 
         #self.run()
 
 
     # Callback Functions
     def rgb_callback(self, data):
-        print("rgb_callback")
         img = np.frombuffer(data.data, dtype=np.uint8).reshape(data.height, data.width, -1)
-        print(img)
-        self.rgb_image = cv2.resize(img,(512,512))
+        left_margin = 425   # Left margin in pixels
+        right_margin = 425  # Right margin in pixels
+        top_edge = 360  # The y-coordinate of the top edge of the cropping area (adjust as needed)
+        cropped_image = img[top_edge:720, left_margin:img.shape[1] - right_margin]
+
+        self.rgb_image = cv2.resize(cropped_image,(512,512))
         t1 = time.time()
         #Predict Crop Row Mask
         img = img_to_array(self.rgb_image)
         img = img.astype('float32')
         img /= 255
         img = tf.reshape(img, [1, 512, 512, 3])
-        img_mask = model.predict(img, verbose=0)
+        img_mask = self.model.predict(img, verbose=0)
         img = img_mask[0, :]
         img = np.array(array_to_img(img))
         binary, img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
         self.cr_mask = img
-        #print("T: ",time.time()-t1,"ms")
+        print("T: ",time.time()-t1,"ms")
 
     def depth_callback(self, data):
-        print("depth_callback")
         depth = np.frombuffer(data.data, dtype=np.uint16).reshape(data.height, data.width)
         self.depth_image = cv2.resize(depth,(512,512))
         self.depth_image = self.depth_image/1000.0 # Multiply by [depth scale = 0.001] in mm
 
     def camera_info_callback(self, data):
-        print("camera_info_callback")
         self.camera_info = data
 
     def imu_callback(self, data): 
-        print("imu_callback")
         self.imu_data = data
 
     def odom_callback(self, data):
-        print("odom_callback")
         self.odom = data
 
     # Operation Functions
@@ -115,6 +115,7 @@ class lineFollower(object):
         self.eor = eor
         return 0
 
+    '''
     def exit_row(self):#Exit Crop Row with Maneuvere
     #This function will control the robot's velocity in 2 stages.          |         ***EOR State***                           ***Exit State***
     #                                                                      | ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾   ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾  |
@@ -144,6 +145,7 @@ class lineFollower(object):
             self.pub_vel.publish(move_cmd)
         print("Stage 2 Complete")
         return 0
+        '''
 
     def tri_scan(self):
         crop_scan = LineScan(self.cr_mask, self.rgb_image)
@@ -176,55 +178,78 @@ class lineFollower(object):
         if self.imu_data is None:
             print("IMU Data Not Received")
         return 0
+    
+    def load_unet_model(self):
+        myunet = myUnet()
+        model = myunet.get_unet()
+        # model_path = get_package_share_directory("ag_row") + "/ag_row/models/unet.hdf5"
+        model_path = "/home/corn/code/hackathon2025_ws/src/ag_row/ag_row/models/unet.hdf5"
+        model.load_weights(model_path)
+        print("U-Net Model Loaded Successfully")  
+
+        return model
 
     # Main Algorithm 
     def run(self):
-        rate = self.node.create_rate(100)
+        #rate = self.node.create_rate(100)
 
-        while rclpy.ok():
-            if self.rgb_image is not None and self.cr_mask is not None and self.depth_image is not None and self.camera_info is not None:
-                print("$$$$$$")
-                depth_scale = self.camera_info.K[0]  # Get the depth scale from the camera info
-                depth_image_meters = self.depth_image * depth_scale
+        #while rclpy.ok():
+        if self.rgb_image is not None and self.cr_mask is not None and self.camera_info is not None:
+            print("$Runing Navigation Loop$")
+            #depth_scale = self.camera_info.K[0]  # Get the depth scale from the camera info
+            #depth_image_meters = self.depth_image * depth_scale
 
-                center_line_angle, center_line_pos, exflg, re_entry, eor = self.tri_scan()
-                cerror = center_line_angle # cw + | ccw -
-                derror = 256 - center_line_pos # Right pos - | Left pos +
+            center_line_angle, center_line_pos, exflg, re_entry, eor = self.tri_scan()
+            cerror = center_line_angle # cw + | ccw -
+            derror = 256 - center_line_pos # Right pos - | Left pos +
 
-                if exflg:#if exit flag is set, perform exit maneuvere
-                    self.tag_reentry(re_entry, eor)#Record Re-Entry Position
-                    self.exit_row()#Exit Crop Row
-                    rclpy.shutdown()
+            #if exflg:#if exit flag is set, perform exit maneuvere
+                #self.tag_reentry(re_entry, eor)#Record Re-Entry Position
+                #self.exit_row()#Exit Crop Row
+                #rclpy.shutdown()
 
-                #Control Robot
-                move_cmd = Twist()
-                move_cmd.linear.x = 0.03
-                move_cmd.angular.z = ((cerror/500) + (derror/3000)) # cw - | ccw + #Husky
-                #move_cmd.angular.z = ((cerror/400) + (derror/2000)) # cw - | ccw + #Husky
-                self.pub_vel.publish(move_cmd)
+            #Control Robot
+            #move_cmd = Twist()
+            #move_cmd.linear.x = 0.5
+            #move_cmd.angular.z = ((cerror/500) + (derror/3000)) # cw - | ccw + #Husky
+            #self.pub_vel.publish(move_cmd)
 
-                # Reset the all parameters after processing
-                self.reset()
+            move_cmd = TwoAxleSteeringCommand()
+            move_cmd.longitudinal_speed = 0.5
+            move_cmd.front_steering_angle = ((cerror/500) + (derror/3000))
+            move_cmd.rear_steering_angle = 0.0
+            self.pub_vel.publish(move_cmd)
+            print(cerror, derror, move_cmd)
 
-            else:
-                #continue
-                print("Navigation failed! Insufficient data!")
-                self.nav_diagnose()
+                
+
+
+            # Reset the all parameters after processing
+            self.reset()
+
+        else:
+            #continue
+            print("Navigation failed! Insufficient data!")
+            #self.nav_diagnose()
             #rate.sleep()
-        rclpy.spin()
+        #rclpy.spin()
 
 
 
-def main():
-    myunet = myUnet()
-    model = myunet.get_unet()
-    # model_path = get_package_share_directory("ag_row") + "/ag_row/models/unet.hdf5"
-    model_path = "/home/corn/code/hackathon2025_ws/src/ag_row/ag_row/models/unet.hdf5"
-    model.load_weights(model_path)
-    print("U-Net Model Loaded Successfully")  
+def main(args=None):
+    rclpy.init(args=args)
 
     line_follower = lineFollower(ROBOT, CAMERA)
-    line_follower.run()
+    #line_follower.run()
+    try:
+        while rclpy.ok():
+            rclpy.spin_once(line_follower, timeout_sec=0.5)
+            line_follower.run()
+    except KeyboardInterrupt:
+        line_follower.get_logger().info("Shutting Down Line Follower...")
+    finally:
+        line_follower.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main();

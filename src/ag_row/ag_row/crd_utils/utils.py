@@ -1,5 +1,4 @@
 __author__ = "Rajitha de Silva"
-__copyright__ = "Copyright (C) 2023 rajitha@ieee.org"
 __license__ = "CC"
 __version__ = "1.0"
 
@@ -79,8 +78,11 @@ def init_robot(name):
         length = 0.990 # Meters
 
     elif name == "FIRA":
-        vel_topic = "/robot/joystick/joy"
+        vel_topic = "/robot/base/teleop/cmd_two_axle_steering"
+        #vel_topic = "rf_vel"
         odom_topic = "/robot/base/controller/odom"
         length = 0.990 # Meters
 
     return vel_topic, odom_topic, length
+
+

@@ -28,22 +28,13 @@ services:
     <<: [*base]
     depends_on: [simulator]
     command: >-
-      ros2 launch tirrex_demo robot_localisation.launch.py
-        demo_config_directory:=/config
-        robot_config_directory:=/config/robot
-        mode:=simulation_gazebo_classic
-        robot_namespace:=robot
+      ros2 launch tirrex_demo robot_localisation.launch.py demo_config_directory:=./config robot_config_directory:=./config/robot mode:=simulation_gazebo_classic robot_namespace:=robot
 
   path_following:  # control the robot to follow the specified trajectory file
     <<: [*base]
     depends_on: [localisation]
     command: >-
-      ros2 launch tirrex_demo robot_path_following.launch.py
-        demo_config_directory:=/config
-        robot_config_directory:=/config/robot
-        mode:=simulation_gazebo_classic
-        robot_namespace:=robot
-        trajectory_filename:=test01.traj
+      ros2 launch tirrex_demo robot_path_following.launch.py demo_config_directory:=./config robot_config_directory:=./config/robot mode:=simulation_gazebo_classic robot_namespace:=robot trajectory_filename:=test01.traj
 
   path_recorder:  # record a trajectory file from the current localization
     <<: [*base]

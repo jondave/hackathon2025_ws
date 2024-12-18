@@ -130,7 +130,7 @@ class myUnet(object):
         #model.compile(optimizer=Adam(lr=1e-4), loss=BinaryFocalLoss(gamma=2), metrics=['accuracy', self.iou, self.loss_angle], run_eagerly=True)
         #model.compile(optimizer=Adam(lr=1e-4), loss='binary_crossentropy', metrics=['accuracy', self.iou], run_eagerly=True)
         #model.compile(optimizer=Adam(lr=1e-4), loss=self.loss_angle, metrics=[tf.keras.metrics.MeanIoU(num_classes=2)])
-        model.compile(optimizer=Adam(learning_rate=1e-4), loss='binary_crossentropy', metrics=['accuracy', self.iou], run_eagerly=True)
+        model.compile(optimizer=Adam(learning_rate=1e-4), loss='binary_crossentropy', metrics=['accuracy', self.iou])#, run_eagerly=True)
 
 
         return model
