@@ -301,7 +301,8 @@ Visualization Manager:
           Enabled: true
           Name: crops
           Namespaces:
-            {}
+            crops: true
+            crushed_crops: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -321,6 +322,18 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /robot/path_matching/markers
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: geofence shape
+          Namespaces:
+            geofence_markers: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /evaluation/evaluation/geofence_markers
           Value: true
         - Align Bottom: false
           Background Alpha: 0.800000011920929
@@ -660,7 +673,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/ThirdPersonFollower
-      Distance: 14.569252967834473
+      Distance: 15.755678176879883
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
