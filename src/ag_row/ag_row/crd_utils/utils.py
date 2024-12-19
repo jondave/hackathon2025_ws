@@ -66,23 +66,51 @@ def init_robot(name):
     vel_topic = "/rf_vel"
     odom_topic = "/odom"
     length = 0.526 # Meters
+    kp = 0.002
+    ki = 0.0
+    kd = 0.0
 
     if name == "Mark1":
         vel_topic = "/rf_vel"
         odom_topic = "/odom"
         length = 0.526 # Meters
+        kp = 0.002
+        ki = 0.0
+        kd = 0.1
 
     elif name == "Husky":
         vel_topic = "/rf_vel"
         odom_topic = "/odometry/filtered"
         length = 0.990 # Meters
+        kp = 0.005
+        ki = 0.0
+        kd = 0.005
+
+    elif name == "HuskySim":
+        vel_topic = "/rf_vel"
+        odom_topic = "/odometry/filtered"
+        length = 0.990 # Meters
+        kp = 0.005
+        ki = 0.0
+        kd = 0.005
 
     elif name == "FIRA":
         vel_topic = "/robot/base/teleop/cmd_two_axle_steering"
-        #vel_topic = "rf_vel"
         odom_topic = "/robot/base/controller/odom"
         length = 0.990 # Meters
+        kp = 0.003
+        ki = 0.0
+        kd = 0.001
+    
+    # Example -  Edit this block of code to add your robot
+    #elif name == "YOUR_ROBOT_NAME":
+        #vel_topic = "/rf_vel" # Keep this unchanged for Velocity Latch. You need to add your robot's velocity command to velocity_latch.py if it's not "/cmd_vel"
+        #odom_topic = "/odometry/filtered" # Robot Odometry Topic
+        #length = 0.990 # Length of the robot in meters 
+        #kp = 0.0
+        #ki = 0.0
+        #kd = 0.0
 
-    return vel_topic, odom_topic, length
+    return vel_topic, odom_topic, length, kp, ki, kd
 
 

@@ -10,8 +10,10 @@ configuration:
     resolution: 1280x720  
 geometry:
   parent_link: "base_link"
-  xyz: [1.42, 0.0, 1.14]
-  rpy: [0.0, 20.0, 0.0]
+  # xyz: [1.42, 0.0, 1.14]
+  # rpy: [0.0, 20.0, 0.0]
+  xyz: [1.8, 0.0, 1.14]
+  rpy: [0.0, 40.0, 0.0]
 records:
   rgb/camera_info: false
   rgb/image_raw: true

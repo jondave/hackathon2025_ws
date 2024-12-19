@@ -35,6 +35,7 @@ from romea_mobile_base_msgs.msg import TwoAxleSteeringCommand
 from ag_row.crd_utils.unetwsess import * #U-Net model inference functions
 from ag_row.crd_utils.data import * # Data Loader for U-Net
 from ag_row.crd_utils.triangle_scan import * #CRD Post processing
+from ag_row.crd_utils.pid import * #PID Controller
 from ag_row.crd_utils.exitman import * # Exit Manoeuvre
 from ag_row.crd_utils.utils import * #Miscellaneous (math functions and etc)
 
@@ -44,7 +45,7 @@ CAMERA = "FIRA"# [D435i, Leo]
 class lineFollower(Node):
     def __init__(self, robot, camera):
         super().__init__('Line_Follower')
-        vel_topic, odom_topic, length = init_robot(robot)
+        vel_topic, odom_topic, length, kp, ki, kd = init_robot(robot)
         img_topic, depth_topic, imu_topic, cam_info_topic = init_camera(camera)
 
         self.rgb_image = None
@@ -56,6 +57,7 @@ class lineFollower(Node):
         self.reentry = None
         self.eor = None
         self.robot_length = length
+        self.pid = PIDController(kp,ki,kd,0.0)#Initialize PID with target error 0.0
 
         self.create_subscription(IGG, img_topic, self.rgb_callback, 10)
         #self.create_subscription(IGG, depth_topic, self.depth_callback, 10)
@@ -75,9 +77,8 @@ class lineFollower(Node):
     # Callback Functions
     def rgb_callback(self, data):
         img = np.frombuffer(data.data, dtype=np.uint8).reshape(data.height, data.width, -1)
-        left_margin = 425   # Left margin in pixels
-        right_margin = 425  # Right margin in pixels
-        top_edge = 360  # The y-coordinate of the top edge of the cropping area (adjust as needed)
+        left_margin = right_margin = 350   # Left, Right margins in pixels
+        top_edge = 300  # The y-coordinate of the top edge of the cropping area (adjust as needed)
         cropped_image = img[top_edge:720, left_margin:img.shape[1] - right_margin]
 
         self.rgb_image = cv2.resize(cropped_image,(512,512))
@@ -200,8 +201,8 @@ class lineFollower(Node):
             #depth_image_meters = self.depth_image * depth_scale
 
             center_line_angle, center_line_pos, exflg, re_entry, eor = self.tri_scan()
-            cerror = center_line_angle # cw + | ccw -
-            derror = 256 - center_line_pos # Right pos - | Left pos +
+            a_error = -center_line_angle # cw + | ccw -
+            d_error = center_line_pos - 256 # Right pos - | Left pos +
 
             #if exflg:#if exit flag is set, perform exit maneuvere
                 #self.tag_reentry(re_entry, eor)#Record Re-Entry Position
@@ -214,15 +215,14 @@ class lineFollower(Node):
             #move_cmd.angular.z = ((cerror/500) + (derror/3000)) # cw - | ccw + #Husky
             #self.pub_vel.publish(move_cmd)
 
+            combined_error = 0.95*a_error + 0.05*d_error
+            steer_angle = self.pid.update(combined_error)
+
             move_cmd = TwoAxleSteeringCommand()
-            move_cmd.longitudinal_speed = 0.5
-            move_cmd.front_steering_angle = ((cerror/500) + (derror/3000))
-            move_cmd.rear_steering_angle = 0.0
+            move_cmd.longitudinal_speed = 0.3
+            move_cmd.front_steering_angle = -steer_angle
+            move_cmd.rear_steering_angle = steer_angle
             self.pub_vel.publish(move_cmd)
-            print(cerror, derror, move_cmd)
-
-                
-
 
             # Reset the all parameters after processing
             self.reset()
