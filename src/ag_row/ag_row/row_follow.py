@@ -31,6 +31,8 @@ from sensor_msgs.msg import Imu, CameraInfo
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from romea_mobile_base_msgs.msg import TwoAxleSteeringCommand
+from romea_cmd_mux_msgs.srv import Unsubscribe
+from romea_cmd_mux_msgs.srv import Subscribe
 
 from ag_row.crd_utils.unetwsess import * #U-Net model inference functions
 from ag_row.crd_utils.data import * # Data Loader for U-Net
@@ -41,6 +43,45 @@ from ag_row.crd_utils.utils import * #Miscellaneous (math functions and etc)
 
 ROBOT = "FIRA" # [Husky, Mark1, Hunter, Leo, HuskySim]
 CAMERA = "FIRA"# [D435i, Leo]
+
+# ## this class adds the new cmd_vel topic to the twist mux in the FIRA robot
+# # https://github.com/FiraHackathon/hackathon2025_ws/blob/main/doc/robot_control.md
+# class CmdMuxServiceClient(Node):
+#     def __init__(self):
+#         super().__init__('cmd_mux_service_client')
+#         self.client = self.create_client(Unsubscribe, '/robot/base/cmd_mux/unsubscribe')
+#         while not self.client.wait_for_service(timeout_sec=1.0):
+#             self.get_logger().info('Service not available, waiting again...')
+
+#     def call_unsubscribe_service(self):
+#         request = Unsubscribe.Request()
+#         future = self.client.call_async(request)
+#         rclpy.spin_until_future_complete(self, future)
+#         if future.result() is not None:
+#             self.get_logger().info('Successfully unsubscribed')
+#         else:
+#             self.get_logger().error('Service call failed')
+
+## this class adds the new cmd_vel topic to the twist mux in the FIRA robot
+# https://github.com/FiraHackathon/hackathon2025_ws/blob/main/doc/robot_control.md 
+class CmdMuxServiceClient(Node):
+    def __init__(self):
+        super().__init__('cmd_mux_service_client')
+        self.client = self.create_client(Subscribe, '/robot/base/cmd_mux/subscribe')
+        while not self.client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service not available, waiting again...')
+
+    def call_subscribe_service(self):
+        request = Subscribe.Request()
+        request.topic = '/row_following_cmd_vel'
+        request.priority = 50
+        request.timeout = 0.1
+        future = self.client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
+        if future.result() is not None:
+            self.get_logger().info(f'Successfully subscribed to {request.topic}')
+        else:
+            self.get_logger().error('Service call failed')
 
 class lineFollower(Node):
     def __init__(self, robot, camera):
@@ -65,7 +106,8 @@ class lineFollower(Node):
         self.create_subscription(CameraInfo, cam_info_topic, self.camera_info_callback, 10)
         self.create_subscription(Odometry, odom_topic, self.odom_callback, 10)
 
-        self.pub_vel = self.create_publisher(TwoAxleSteeringCommand, vel_topic, 10)
+        # self.pub_vel = self.create_publisher(TwoAxleSteeringCommand, vel_topic, 10)
+        self.pub_vel = self.create_publisher(TwoAxleSteeringCommand, "/row_following_cmd_vel", 10)
         self.pub_vui = self.create_publisher(Twist, "/vui", 10)#Vision User Interface Topic. An image verbose for each thread in the pipeline
         print("Line follower initialized")
 
@@ -238,6 +280,13 @@ class lineFollower(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+
+    ## this class adds the new cmd_vel topic to the twist mux in the FIRA robot
+    # https://github.com/FiraHackathon/hackathon2025_ws/blob/main/doc/robot_control.md 
+    # client = CmdMuxServiceClient()
+    # client.call_unsubscribe_service()
+    client = CmdMuxServiceClient()
+    client.call_subscribe_service()
 
     line_follower = lineFollower(ROBOT, CAMERA)
     #line_follower.run()
