@@ -44,24 +44,6 @@ from ag_row.crd_utils.utils import * #Miscellaneous (math functions and etc)
 ROBOT = "FIRA" # [Husky, Mark1, Hunter, Leo, HuskySim]
 CAMERA = "FIRA"# [D435i, Leo]
 
-# ## this class adds the new cmd_vel topic to the twist mux in the FIRA robot
-# # https://github.com/FiraHackathon/hackathon2025_ws/blob/main/doc/robot_control.md
-# class CmdMuxServiceClient(Node):
-#     def __init__(self):
-#         super().__init__('cmd_mux_service_client')
-#         self.client = self.create_client(Unsubscribe, '/robot/base/cmd_mux/unsubscribe')
-#         while not self.client.wait_for_service(timeout_sec=1.0):
-#             self.get_logger().info('Service not available, waiting again...')
-
-#     def call_unsubscribe_service(self):
-#         request = Unsubscribe.Request()
-#         future = self.client.call_async(request)
-#         rclpy.spin_until_future_complete(self, future)
-#         if future.result() is not None:
-#             self.get_logger().info('Successfully unsubscribed')
-#         else:
-#             self.get_logger().error('Service call failed')
-
 ## this class adds the new cmd_vel topic to the twist mux in the FIRA robot
 # https://github.com/FiraHackathon/hackathon2025_ws/blob/main/doc/robot_control.md 
 class CmdMuxServiceClient(Node):
@@ -283,8 +265,6 @@ def main(args=None):
 
     ## this class adds the new cmd_vel topic to the twist mux in the FIRA robot
     # https://github.com/FiraHackathon/hackathon2025_ws/blob/main/doc/robot_control.md 
-    # client = CmdMuxServiceClient()
-    # client.call_unsubscribe_service()
     client = CmdMuxServiceClient()
     client.call_subscribe_service()
 
