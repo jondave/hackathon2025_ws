@@ -3,7 +3,8 @@
 ### Install
 
 Our row following package is ag_row, colcon build the workspace to build the package.
-The package uses tensorflow the model PT file is not in this repository but available separately.
+The package uses tensorflow the model (`unet.hdf5`) file is not in this repository but available separately.
+Put the `unet.hdf5` file in the fodler `hackathon2025_ws/src/ag_row/ag_row/models`.
 
 #### Requirments
 - shapley
