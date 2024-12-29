@@ -1,3 +1,9 @@
+## LCASTOR
+[LCASTOR readme](lcastor.md)
+
+
+## FIRA Readme
+
 This project corresponds to the workspace of the FIRA 2025 hackathon.
 It allows installing everything required to run the challenges and demos of the hackathon.
 It is based on the [TIRREX workspace](https://github.com/Tirrex-Roboterrium/tirrex_workspace)
