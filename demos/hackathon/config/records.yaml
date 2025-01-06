@@ -1,5 +1,5 @@
-# directory: /tmp/records
-directory: /home/corn/code/hackathon2025_ws/demos/hackathon/records
+directory: /tmp/records
+#directory: /home/corn/code/hackathon2025_ws/demos/hackathon/records
 config: true
 debug: true
 log: true

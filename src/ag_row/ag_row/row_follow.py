@@ -243,9 +243,9 @@ class lineFollower(Node):
             steer_angle = self.pid.update(combined_error)
 
             move_cmd = TwoAxleSteeringCommand()
-            move_cmd.longitudinal_speed = 0.3
+            move_cmd.longitudinal_speed = 0.15
             move_cmd.front_steering_angle = -steer_angle
-            move_cmd.rear_steering_angle = steer_angle
+            move_cmd.rear_steering_angle = 0.0#steer_angle
             self.pub_vel.publish(move_cmd)
 
             # Reset the all parameters after processing
